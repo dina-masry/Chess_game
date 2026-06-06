@@ -261,6 +261,226 @@ def run_assignment(conn: sqlite3.Connection) -> None:
         LIMIT 5
     """))
 
+# Q7 — JOIN games to openings: top 5 most played openings
+    print("\n── Q7 ──")
+    print(query(conn, """
+        SELECT o.opening_code, o.opening_fullname, COUNT(*) AS total
+        FROM games g
+        JOIN openings o ON g.opening_code = o.opening_code
+        GROUP BY o.opening_code
+        ORDER BY total DESC
+        LIMIT 5
+    """))
+
+    # Q8 — Players who never appeared as white_id
+    print("\n── Q8 ──")
+    print(query(conn, """
+        SELECT COUNT(*) AS never_played_white
+        FROM players p
+        LEFT JOIN games g ON p.username = g.white_id
+        WHERE g.white_id IS NULL
+    """))
+
+    # Q9 — CTE: top 5 players by white wins
+    print("\n── Q9 ──")
+    print(query(conn, """
+        WITH white_wins AS (
+            SELECT white_id, COUNT(*) AS wins
+            FROM games
+            WHERE winner = 'White'
+            GROUP BY white_id
+        )
+        SELECT white_id, wins
+        FROM white_wins
+        ORDER BY wins DESC
+        LIMIT 5
+    """))
+
+    # Q10 — UNION: total wins (white + black), top player
+    print("\n── Q10 ──")
+    print(query(conn, """
+        WITH all_wins AS (
+            SELECT white_id AS player, COUNT(*) AS wins
+            FROM games WHERE winner = 'White'
+            GROUP BY white_id
+            UNION ALL
+            SELECT black_id AS player, COUNT(*) AS wins
+            FROM games WHERE winner = 'Black'
+            GROUP BY black_id
+        )
+        SELECT player, SUM(wins) AS total_wins
+        FROM all_wins
+        GROUP BY player
+        ORDER BY total_wins DESC
+        LIMIT 5
+    """))
+
+    # Q11 — Window: RANK each game per white player by white_rating
+    print("\n── Q11 ──")
+    print(query(conn, """
+        SELECT white_id, game_id, white_rating,
+            RANK() OVER (
+                PARTITION BY white_id 
+                ORDER BY white_rating DESC
+            ) AS rating_rank
+        FROM games
+        ORDER BY white_id, rating_rank
+        LIMIT 10
+    """))
+
+    # Q12 — LAG: previous game's white_rating for players with 5+ games
+    print("\n── Q12 ──")
+    print(query(conn, """
+        WITH player_game_counts AS (
+            SELECT white_id
+            FROM games
+            GROUP BY white_id
+            HAVING COUNT(*) >= 5
+        )
+        SELECT 
+            g.white_id, g.game_id, g.white_rating,
+            LAG(g.white_rating) OVER (
+                PARTITION BY g.white_id 
+                ORDER BY g.game_id
+            ) AS prev_rating
+        FROM games g
+        JOIN player_game_counts p ON g.white_id = p.white_id
+        ORDER BY g.white_id, g.game_id
+        LIMIT 10
+    """))
+
+    # ── EXPLAIN QUERY PLAN (Step 2) ──────────────────
+    print("\n── EXPLAIN QUERY PLAN ──")
+    print(query(conn, """
+        EXPLAIN QUERY PLAN
+        SELECT * FROM games WHERE white_id = 'taranga'
+    """))
+
+    # ── Assignment Q1 — Highest Draw rate by opening ──
+    print("\n── A1: Highest Draw rate ──")
+    print(query(conn, """
+        SELECT 
+            opening_code,
+            COUNT(*) AS total,
+            SUM(CASE WHEN winner = 'Draw' THEN 1 ELSE 0 END) AS draws,
+            ROUND(SUM(CASE WHEN winner = 'Draw' THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 2) AS draw_rate
+        FROM games
+        GROUP BY opening_code
+        HAVING total > 10
+        ORDER BY draw_rate DESC
+        LIMIT 5
+    """))
+
+    # ── Assignment Q2 — Players who won more as Black than White ──
+    print("\n── A2: More Black wins than White wins ──")
+    print(query(conn, """
+        WITH white_wins AS (
+            SELECT white_id AS player, COUNT(*) AS wins
+            FROM games WHERE winner = 'White'
+            GROUP BY white_id
+        ),
+        black_wins AS (
+            SELECT black_id AS player, COUNT(*) AS wins
+            FROM games WHERE winner = 'Black'
+            GROUP BY black_id
+        )
+        SELECT 
+            b.player,
+            COALESCE(b.wins, 0) AS black_wins,
+            COALESCE(w.wins, 0) AS white_wins
+        FROM black_wins b
+        LEFT JOIN white_wins w ON b.player = w.player
+        WHERE COALESCE(b.wins, 0) > COALESCE(w.wins, 0)
+        ORDER BY black_wins DESC
+        LIMIT 10
+    """))
+
+    # ── Assignment Q3 — Most common opening per victory_status ──
+    print("\n── A3: Most common opening per victory_status ──")
+    print(query(conn, """
+        WITH ranked AS (
+            SELECT 
+                victory_status,
+                opening_code,
+                COUNT(*) AS cnt,
+                RANK() OVER (
+                    PARTITION BY victory_status 
+                    ORDER BY COUNT(*) DESC
+                ) AS rnk
+            FROM games
+            GROUP BY victory_status, opening_code
+        )
+        SELECT victory_status, opening_code, cnt
+        FROM ranked
+        WHERE rnk = 1
+        ORDER BY victory_status
+    """))
+
+    # ── Assignment Q4 — Top 3 opening families by avg turns ──
+    print("\n── A4: Top 3 opening families by avg turns ──")
+    print(query(conn, """
+        WITH families AS (
+            SELECT 
+                TRIM(SUBSTR(o.opening_fullname, 1, 
+                    CASE WHEN INSTR(o.opening_fullname, ':') = 0 
+                         THEN LENGTH(o.opening_fullname)
+                         ELSE INSTR(o.opening_fullname, ':') - 1 
+                    END
+                )) AS opening_family,
+                g.turns
+            FROM games g
+            JOIN openings o ON g.opening_code = o.opening_code
+        )
+        SELECT opening_family, ROUND(AVG(turns), 2) AS avg_turns, COUNT(*) AS total
+        FROM families
+        GROUP BY opening_family
+        HAVING total > 50
+        ORDER BY avg_turns DESC
+        LIMIT 3
+    """))
+
+    # ── Assignment Q5 — Window: rank games by turns per player ──
+    print("\n── A5: Game ranks by turns ──")
+    game_ranks = query(conn, """
+        SELECT 
+            white_id,
+            game_id,
+            turns,
+            RANK() OVER (
+                PARTITION BY white_id 
+                ORDER BY turns DESC
+            ) AS turn_rank
+        FROM games
+        ORDER BY white_id, turn_rank
+    """)
+    print(game_ranks.head(10))
+    game_ranks.to_csv('data/processed/game_ranks.csv', index=False)
+    print("✅ Saved: data/processed/game_ranks.csv")
+
+    # ── Step 4 — Feature Table ────────────────────────
+    print("\n── Feature Table ──")
+    features = query(conn, """
+        WITH white_experience AS (
+            SELECT white_id, COUNT(*) AS total_games
+            FROM games
+            GROUP BY white_id
+        )
+        SELECT 
+            g.game_id,
+            g.white_rating - g.black_rating AS rating_diff,
+            g.turns,
+            g.rated,
+            o.opening_shortname,
+            we.total_games AS white_experience,
+            g.winner AS label
+        FROM games g
+        JOIN openings o ON g.opening_code = o.opening_code
+        LEFT JOIN white_experience we ON g.white_id = we.white_id
+    """)
+    print(features.head())
+    print(f"Shape: {features.shape}")
+    features.to_csv('data/processed/features.csv', index=False)
+    print(" Saved: data/processed/features.csv")
 
 def main():
     print("This is for session 6: testing databases")
