@@ -110,10 +110,10 @@ Chess_game/
 |----------|--------|
 | Q10: Win rates | White: 49.9% / Black: 45.4% / Draw: 4.7% |
 | Q11: Most common victory status | **Resign** |
-| Q12: Highest avg turns by status | **Draw** (~88 turns) |
+| Q12: Highest avg turns by status | **Draw** (~84 turns) |
 | Q13: Top opening when White wins | **Sicilian Defense** |
 | Q13: Top opening when Black wins | **Sicilian Defense** |
-| Q14: Rated White win rate | ~49% / Unrated: ~51% |
+| Q14: Rated White win rate | ~49.84% / Unrated: ~49.94% |
 | Q15: Game length distribution | Long > Medium > Short |
 
 ### Stage 4 — Plots
