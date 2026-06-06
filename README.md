@@ -123,3 +123,111 @@ Chess_game/
 | White rating vs turns | `white_rating_vs_turns.png` | Most games end in 25–120 turns; outliers reach 350 |
 | Turns by victory status | `turns_by_victory_status.png` | Draw = longest, Resign = shortest |
 
+# Part 2 — Database Schema (Assignment 6)
+
+## Table 1: `players`
+| Column | Type | Constraints | Why |
+|--------|------|-------------|-----|
+| `username` | TEXT | PRIMARY KEY NOT NULL | Unique identifier for each player |
+| `last_rating` | INTEGER | NOT NULL | Player's most recent rating |
+| `total_games` | INTEGER | NOT NULL DEFAULT 0 | Total games played as white or black |
+
+**Rows:** 15,635 unique players
+
+---
+
+## Table 2: `openings`
+| Column | Type | Constraints | Why |
+|--------|------|-------------|-----|
+| `opening_code` | TEXT | PRIMARY KEY NOT NULL | Unique ECO code per opening |
+| `opening_shortname` | TEXT | NOT NULL | Short display name |
+| `opening_fullname` | TEXT | NOT NULL | Full name including variation |
+
+**Rows:** 365 unique openings
+
+**Why separate table?** `opening_fullname` depends only on `opening_code`, not on `game_id` → 2NF violation → separated.
+
+---
+
+## Table 3: `games`
+| Column | Type | Constraints | Why |
+|--------|------|-------------|-----|
+| `game_id` | INTEGER | PRIMARY KEY NOT NULL | Unique identifier per game |
+| `white_id` | TEXT | NOT NULL, FK → players(username) | Links white player to players table |
+| `black_id` | TEXT | NOT NULL, FK → players(username) | Links black player to players table |
+| `winner` | TEXT | NOT NULL, CHECK(winner IN ('White','Black','Draw')) | Prevents invalid winner values |
+| `victory_status` | TEXT | NOT NULL | How the game ended |
+| `turns` | INTEGER | NOT NULL, CHECK(turns >= 1) | Prevents 0 or negative turn counts |
+| `time_increment` | TEXT | NOT NULL | Raw time control string |
+| `rated` | INTEGER | NOT NULL, CHECK(rated IN (0,1)) | Boolean: 1=rated, 0=unrated |
+| `opening_code` | TEXT | NOT NULL, FK → openings(opening_code) | Links game to openings table |
+| `white_rating` | INTEGER | NOT NULL | Deliberate denormalization for analytical convenience |
+| `black_rating` | INTEGER | NOT NULL | Deliberate denormalization for analytical convenience |
+
+**Rows:** 20,058 games
+
+---
+
+## Why Each FK Exists
+| FK | Protects Against |
+|----|-----------------|
+| `white_id → players(username)` | Can't insert a game for a player that doesn't exist |
+| `black_id → players(username)` | Both sides of the game must be registered players |
+| `opening_code → openings(opening_code)` | Can't insert a game with an unknown opening code |
+
+---
+
+## Why Each CHECK Constraint Exists
+| CHECK | Protects Against |
+|-------|-----------------|
+| `winner IN ('White','Black','Draw')` | Prevents typos like 'white', 'WIN', or NULL |
+| `turns >= 1` | Prevents 0-turn or negative games |
+| `rated IN (0,1)` | Enforces boolean — prevents values like 2 or -1 |
+
+---
+
+## Indexes
+```sql
+CREATE INDEX idx_games_white   ON games(white_id)
+CREATE INDEX idx_games_black   ON games(black_id)
+CREATE INDEX idx_games_opening ON games(opening_code)
+CREATE INDEX idx_games_winner  ON games(winner)
+```
+**EXPLAIN QUERY PLAN confirms:**
+```
+SEARCH games USING INDEX idx_games_white (white_id=?)
+```
+
+---
+
+## ERD
+```
+players ──────────────────── games ──────── openings
+(username PK)    white_id FK ──┘  └── opening_code FK    (opening_code PK)
+                 black_id FK ──┘
+```
+
+---
+
+## Normalisation
+| NF | Applied | Example |
+|----|---------|---------|
+| 1NF | ✅ | All columns atomic |
+| 2NF | ✅ | `opening_fullname` moved to `openings` table |
+| 3NF | ✅ | `rating_tier` computed at query time, not stored |
+
+> **Deliberate denormalization:** `white_rating` and `black_rating` kept in `games` for analytical convenience.
+
+---
+
+## Assignment Answers
+| Q | Answer |
+|---|--------|
+| A1: Highest Draw rate opening | E32 — 33.33% draw rate |
+| A2: More Black wins than White | taranga (38 black vs 34 white) |
+| A3: Most common opening per victory_status | A00 dominates all statuses |
+| A4: Top opening family by avg turns | King's Indian Defense (70.79 avg turns) |
+| A5: Game ranks | saved to `data/processed/game_ranks.csv` |
+| Feature table | saved to `data/processed/features.csv` — 20,058 rows × 7 cols |
+
+
