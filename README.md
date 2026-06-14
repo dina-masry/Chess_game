@@ -231,3 +231,63 @@ players ──────────────────── games ─�
 | Feature table | saved to `data/processed/features.csv` — 20,058 rows × 7 cols |
 
 
+# Visual Research Report — Findings
+
+## Finding 1 — Chess: Draw games last significantly longer than decisive games
+Draw games average around 84 turns, compared to roughly 50-55 for resignations
+and 60-67 for checkmates. This nearly 50% gap shows that games heading toward
+a draw involve prolonged maneuvering, often in endgames where neither side can
+force a breakthrough. Decisive outcomes happen faster — either through
+tactical errors leading to resignation or forced mates. The pattern holds
+across both Black and White, suggesting it is a structural feature of how
+draws arise (repetition or insufficient material) rather than a colour-specific
+effect.
+![alt text](output/pivot_bar.png)
+
+## Finding 2 — Chess: Individual player ratings show short-term volatility but a stable long-term trend
+For the player "taranga", the rolling 5-game average swings noticeably between
+roughly 1240 and 1300, while the expanding average stays close to a narrow
+1280-1295 band throughout the entire game history. The player's peak rating of
+1305 occurred early in their recorded games. This shows that short-term form
+(rolling average) can dip or spike significantly from game to game, while the
+career-long average (expanding) remains far more stable — a useful distinction
+when evaluating whether a player is "on a streak" versus their true skill
+level.
+![alt text](output/player_rolling.png)
+
+
+## Finding 3 — Netflix: Movie catalogue is dominated by mid-length films
+The histogram of movie durations shows a clear peak around 90-110 minutes,
+with the distribution tapering off sharply for both very short films (under
+60 minutes) and very long ones (over 150 minutes). This reflects standard
+theatrical and streaming conventions, where Netflix's acquisition and
+production choices favour the commercially familiar feature-length format
+rather than experimental short or extended-length content.
+![alt text](output/movie_duration.png)
+
+
+## Finding 4 — Netflix: Content production is heavily concentrated in the US and India
+The United States leads with 3,689 titles, more than triple India's count of
+1,046, with the United Kingdom a distant third at 804. This concentration
+reflects Netflix's content strategy: the US as its home market with the
+largest production infrastructure, and India representing the platform's
+strategy to license large volumes of Bollywood and regional content to serve
+its international subscriber base rather than relying solely on original
+production. Beyond the top 3, counts drop sharply (Canada at 445, France at
+393), showing content production is dominated by a small number of major
+markets.
+![alt text](output/top_countries.png)
+
+## Finding 5 — Global temperature anomalies have risen sharply and consistently since 1950
+The temperature heatmap (month x decade) shows anomalies were near zero or
+slightly negative through the 1950s-1970s across all months, but every decade
+since then shows a steady increase across every single month, with the 2020s
+reaching 1.0-1.2°C above baseline in nearly all months. The annual time series
+confirms this: the 10-year rolling average has climbed steadily, with 2024
+recording the highest annual anomaly on record at roughly +1.28°C. The fact
+that warming appears consistently in every month, not concentrated in any
+particular season, indicates this is a systemic shift in the climate baseline
+rather than a seasonal artefact.
+![alt text](output/heatmap.png)
+![alt text](output/temperature.png)
+
